@@ -524,6 +524,104 @@ uvicorn openwebui_gateway.main:app --host 0.0.0.0 --port 18080
 - Phase 1 已完成（Gateway、用户隔离、管理后台）
 - Phase 2 计划实现：技能审批系统、代码精简
 
+---
+
+## 附录：服务器部署参考（明天在服务器上执行）
+
+如果你明天需要在服务器上部署，以下是完整步骤：
+
+### 1. 安装 Docker
+
+```bash
+# Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-plugin
+
+# 启动 Docker
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# 验证
+sudo docker --version
+```
+
+### 2. 拉取代码
+
+```bash
+# 进入你想存放代码的目录
+cd /opt
+
+# 克隆代码（这会下载最新版本，包含今天提交的所有更改）
+sudo git clone https://github.com/foxworld306/hermes-agent.git
+
+# 进入项目目录
+cd hermes-agent
+```
+
+### 3. 创建配置文件
+
+```bash
+# 创建 .env 文件
+sudo nano .env
+```
+
+粘贴以下内容（**等号后面的值改成你自己的**）：
+
+```bash
+# === LLM 端点配置（必填） ===
+CYAN_BASE_URL=http://你的LLM服务器地址:8000/v1
+CYAN_API_KEY=你的API密钥
+CYAN_PROVIDER=openai
+CYAN_MODEL=你的模型名称
+
+# === 管理员密码（建议修改） ===
+ADMIN_SECRET=你的管理员密码
+```
+
+**常见填写错误**：
+- 地址少了 `/v1` 后缀：错误 `http://10.0.1.100:8000`，正确 `http://10.0.1.100:8000/v1`
+- 等号两边有空格：错误 `CYAN_BASE_URL = http://...`，正确 `CYAN_BASE_URL=http://...`
+
+### 4. 启动服务
+
+```bash
+# 构建并启动（第一次需要几分钟下载依赖）
+sudo docker-compose up -d
+
+# 查看日志确认启动成功（看到 Uvicorn running 说明成功了）
+sudo docker-compose logs -f cyan-gateway
+```
+
+**按 `Ctrl+C` 退出日志查看（不会停止服务）。**
+
+### 5. 验证
+
+```bash
+# 健康检查
+sudo curl http://localhost:18080/v1/health
+
+# 查看运行状态
+sudo docker-compose ps
+```
+
+### 6. 连接 Open-WebUI
+
+在 Open-WebUI 中配置：
+- **Base URL**: `http://你的服务器IP:18080/v1`
+- **API Key**: 随便填一个非空字符串（如 `cyan-key`）
+- **自定义 Header**: `X-User-Id` = `你的用户ID`（如 `admin`）
+
+**参考完整的 Open-WebUI 配置步骤，见本手册 Step 3 部分。**
+
+### 如果出问题
+
+如果启动失败，查看日志：
+```bash
+sudo docker-compose logs -f cyan-gateway
+```
+
+常见问题查看本手册第七部分"故障排查"。
+
 如有问题，查看项目文档 `/website/docs/` 或运行测试：
 ```bash
 # 运行全部 Gateway 测试
