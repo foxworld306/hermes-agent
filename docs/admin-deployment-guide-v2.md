@@ -135,23 +135,120 @@ INFO:     Uvicorn running on http://0.0.0.0:18080 (Press CTRL+C to quit)
 
 ### 方式二：Docker 运行（生产）
 
+使用 Docker 部署是最简单的方式，把所有步骤放在一起执行。
+
+#### 第一步：创建 docker-compose.yaml
+
+在 `hermes-agent` 目录下创建一个文件，命名为 `docker-compose.yaml`，内容如下（可以直接复制粘贴）：
+
+```yaml
+version: '3.8'
+
+services:
+  # Cyan Agent Gateway 主服务
+  cyan-gateway:
+    build:
+      context: .                    # 使用当前目录下的代码构建
+      dockerfile: Dockerfile.gateway
+    ports:
+      - "18080:18080"              # 把容器的 18080 端口映射到宿主机的 18080 端口
+    volumes:
+      - cyan-data:/root/.hermes     # 数据持久化存储（用户档案、会话记录等）
+    env_file:
+      - .env                        # 从 .env 文件读取环境变量（LLM 地址、密钥等）
+    environment:
+      - CYAN_HOME=/root/.hermes     # 用户数据存储路径
+      - HERMES_LOG_LEVEL=INFO       # 日志级别
+    restart: unless-stopped         # 如果崩溃或重启电脑，自动重新启动
+    healthcheck:                    # 健康检查：定期确认 Gateway 是否正常工作
+      test: ["CMD", "curl", "-f", "http://localhost:18080/v1/health"]
+      interval: 30s                 # 每 30 秒检查一次
+      timeout: 10s                  # 每次检查最多等 10 秒
+      retries: 3                    # 连续 3 次失败才认为不健康
+
+  # 定时任务服务（可选，用于定时执行 Agent 任务）
+  cyan-cron:
+    build:
+      context: .                    # 使用当前目录下的代码构建
+      dockerfile: Dockerfile.gateway
+    volumes:
+      - cyan-data:/root/.hermes     # 和 Gateway 共享同一存储空间
+    env_file:
+      - .env                        # 从 .env 文件读取环境变量
+    environment:
+      - CYAN_HOME=/root/.hermes     # 用户数据存储路径
+    command: ["python", "-m", "cron.scheduler"]  # 启动定时任务调度器
+    restart: unless-stopped         # 自动重启
+    depends_on:
+      - cyan-gateway                # 确保 Gateway 先启动，再启动 cron
+
+# 持久化存储卷定义
+volumes:
+  cyan-data:
+    driver: local                   # 使用本地存储，数据保存在 Docker 管理的目录中
+```
+
+**保存方法**：
+- **Windows**：用记事本打开，粘贴上面的内容，选择"文件" → "另存为"，文件名填 `docker-compose.yaml`，保存类型选"所有文件"，保存到 `C:\Projects\hermes-agent` 目录
+- **Linux**：在终端运行 `nano docker-compose.yaml`，粘贴内容，按 Ctrl+O，回车，Ctrl+X
+
+#### 第二步：创建 .env 配置文件
+
+在同一个目录下再创建一个 `.env` 文件，内容如下（把等号后面的值换成你自己的）：
+
 ```bash
-# 1. 创建 .env 文件
-cat > .env <<EOF
+# === LLM 端点配置（必填） ===
 CYAN_BASE_URL=http://10.0.1.100:8000/v1
-CYAN_API_KEY=your-internal-llm-key
-ADMIN_SECRET=your-admin-secret
-EOF
+CYAN_API_KEY=你的API密钥
+CYAN_PROVIDER=openai
+CYAN_MODEL=你的模型名称
 
-# 2. 构建镜像
-docker-compose build
+# === 管理员密码（建议修改） ===
+ADMIN_SECRET=你的管理员密码
+```
 
-# 3. 启动
-docker-compose up -d
+**常见填写错误**：
+- 地址少了 `/v1` 后缀：错误 `http://10.0.1.100:8000`，正确 `http://10.0.1.100:8000/v1`
+- 等号两边有空格：错误 `CYAN_BASE_URL = http://...`，正确 `CYAN_BASE_URL=http://...`
+- Windows 记事本自动加 `.txt` 后缀：保存时文件名必须是 `.env`，保存类型选"所有文件"
 
-# 4. 查看日志
+#### 第三步：构建并启动
+
+打开 PowerShell（Windows）或终端（Linux），进入 `hermes-agent` 目录：
+
+```bash
+cd hermes-agent   # 或者你自己的路径
+docker-compose build    # 构建 Docker 镜像（第一次需要几分钟）
+docker-compose up -d    # 后台启动所有服务
+```
+
+#### 第四步：查看日志确认启动成功
+
+```bash
 docker-compose logs -f cyan-gateway
 ```
+
+看到以下输出说明启动成功：
+```
+INFO:     Uvicorn running on http://0.0.0.0:18080 (Press CTRL+C to quit)
+```
+
+按 `Ctrl+C` 退出日志查看（不会停止服务）。
+
+#### 第五步：验证运行状态
+
+```bash
+docker-compose ps
+```
+
+应该看到类似输出：
+```
+NAME                STATUS
+hermes-agent_cyan-gateway_1   Up (healthy)
+hermes-agent_cyan-cron_1      Up
+```
+
+`STATUS` 显示 `Up` 或 `Up (healthy)` 表示运行正常。
 
 ### 验证 Gateway 运行
 
@@ -346,7 +443,9 @@ CYAN_HOME=/data/cyan-agent
 ```
 
 ```yaml
-# docker-compose.yaml
+# docker-compose.yaml（完整版）
+version: '3.8'
+
 services:
   cyan-gateway:
     build:
@@ -355,19 +454,33 @@ services:
     ports:
       - "18080:18080"
     volumes:
-      - cyan-data:/data/cyan-agent
+      - cyan-data:/root/.hermes
+    env_file:
+      - .env
     environment:
-      - CYAN_BASE_URL=${CYAN_BASE_URL}
-      - CYAN_API_KEY=${CYAN_API_KEY}
-      - CYAN_MODEL=${CYAN_MODEL}
-      - ADMIN_SECRET=${ADMIN_SECRET}
-      - CYAN_HOME=/data/cyan-agent
+      - CYAN_HOME=/root/.hermes
+      - HERMES_LOG_LEVEL=INFO
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:18080/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  cyan-cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    volumes:
+      - cyan-data:/root/.hermes
+    env_file:
+      - .env
+    environment:
+      - CYAN_HOME=/root/.hermes
+    command: ["python", "-m", "cron.scheduler"]
+    restart: unless-stopped
+    depends_on:
+      - cyan-gateway
 
 volumes:
   cyan-data:

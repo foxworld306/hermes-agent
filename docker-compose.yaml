@@ -9,10 +9,10 @@ services:
       - "18080:18080"      # OpenAI API endpoint
     volumes:
       - cyan-data:/root/.hermes
+    env_file:
+      - .env                # 从 .env 文件读取环境变量
     environment:
       - CYAN_HOME=/root/.hermes
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ADMIN_SECRET=${ADMIN_SECRET:-cyan_default_secret}
       - HERMES_LOG_LEVEL=INFO
     restart: unless-stopped
     healthcheck:
@@ -27,6 +27,8 @@ services:
       dockerfile: Dockerfile.gateway
     volumes:
       - cyan-data:/root/.hermes
+    env_file:
+      - .env                # 从 .env 文件读取环境变量
     environment:
       - CYAN_HOME=/root/.hermes
     command: ["python", "-m", "cron.scheduler"]
