@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  cyan-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    ports:
+      - "18080:18080"      # OpenAI API endpoint
+    volumes:
+      - cyan-data:/root/.hermes
+    environment:
+      - CYAN_HOME=/root/.hermes
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ADMIN_SECRET=${ADMIN_SECRET:-cyan_default_secret}
+      - HERMES_LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:18080/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  cyan-cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    volumes:
+      - cyan-data:/root/.hermes
+    environment:
+      - CYAN_HOME=/root/.hermes
+    command: ["python", "-m", "cron.scheduler"]
+    restart: unless-stopped
+    depends_on:
+      - cyan-gateway
+
+volumes:
+  cyan-data:
+    driver: local

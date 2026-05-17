@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project files
+COPY . .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -e ".[all]"
+RUN pip install fastapi uvicorn pydantic pyyaml
+
+# Set environment variables
+ENV CYAN_HOME=/root/.hermes
+ENV PYTHONPATH=/app
+
+# Startup command
+CMD ["uvicorn", "openwebui_gateway.main:app", "--host", "0.0.0.0", "--port", "18080"]

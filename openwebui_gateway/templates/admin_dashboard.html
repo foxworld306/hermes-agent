@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyan Agent Admin</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #333; }
+        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        .stat-card { background: white; padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-number { font-size: 2em; font-weight: bold; color: #2196F3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f0f0f0; }
+        button { padding: 5px 10px; margin: 2px; cursor: pointer; }
+        .enable { background: #4CAF50; color: white; border: none; }
+        .disable { background: #f44336; color: white; border: none; }
+        .stop { background: #ff9800; color: white; border: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cyan Agent Admin</h1>
+        
+        <div class="card">
+            <h2>System Overview</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-users">-</div>
+                    <div>Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="active-agents">-</div>
+                    <div>Active Agents</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="enabled-tools">-</div>
+                    <div>Enabled Tools</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Tool Management</h2>
+            <table id="tools-table">
+                <thead>
+                    <tr><th>Tool Name</th><th>Description</th><th>Status</th><th>Action</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+        <div class="card">
+            <h2>Active Users</h2>
+            <table id="users-table">
+                <thead>
+                    <tr><th>User ID</th><th>Status</th><th>Action</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        async function loadStats() {
+            const res = await fetch('/api/admin/system/stats');
+            const data = await res.json();
+            document.getElementById('total-users').textContent = data.total_users;
+            document.getElementById('active-agents').textContent = data.active_agents;
+            document.getElementById('enabled-tools').textContent = data.enabled_tools;
+        }
+        
+        async function loadTools() {
+            const res = await fetch('/api/admin/tools');
+            const tools = await res.json();
+            const tbody = document.querySelector('#tools-table tbody');
+            tbody.innerHTML = tools.map(t => `
+                <tr>
+                    <td>${t.tool_name}</td>
+                    <td>${t.description}</td>
+                    <td>${t.enabled ? 'Enabled' : 'Disabled'}</td>
+                    <td>
+                        <button class="${t.enabled ? 'disable' : 'enable'}" 
+                                onclick="toggleTool('${t.tool_name}', ${!t.enabled})">
+                            ${t.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        async function loadUsers() {
+            const res = await fetch('/api/admin/users');
+            const users = await res.json();
+            const tbody = document.querySelector('#users-table tbody');
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.user_id}</td>
+                    <td>${u.status}</td>
+                    <td><button class="stop" onclick="stopAgent('${u.user_id}')">Stop</button></td>
+                </tr>
+            `).join('');
+        }
+        
+        async function toggleTool(toolName, enable) {
+            await fetch(`/api/admin/tools/${toolName}/${enable ? 'enable' : 'disable'}`, {method: 'POST'});
+            loadTools();
+        }
+        
+        async function stopAgent(userId) {
+            await fetch(`/api/admin/agents/stop/${userId}`, {method: 'POST'});
+            loadUsers();
+        }
+        
+        loadStats();
+        loadTools();
+        loadUsers();
+    </script>
+</body>
+</html>

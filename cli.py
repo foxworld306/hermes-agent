@@ -2354,10 +2354,16 @@ def _build_compact_banner() -> str:
     dim_color = _skin.get_color("banner_dim", "#B8860B") if _skin else "#B8860B"
 
     if skin_name == "default":
-        line1 = "⚕ NOUS HERMES - AI Agent Framework"
-        tiny_line = "⚕ NOUS HERMES"
+        brand_name = os.environ.get("HERMES_BRAND", "hermes")
+        if brand_name == "cyan":
+            line1 = "⚕ CYAN - AI Agent Framework"
+            tiny_line = "⚕ CYAN"
+        else:
+            line1 = "⚕ NOUS HERMES - AI Agent Framework"
+            tiny_line = "⚕ NOUS HERMES"
     else:
-        agent_name = _skin.get_branding("agent_name", "Hermes Agent") if _skin else "Hermes Agent"
+        brand_name = os.environ.get("HERMES_BRAND", "hermes")
+        agent_name = _skin.get_branding("agent_name", "Cyan Agent" if brand_name == "cyan" else "Hermes Agent") if _skin else ("Cyan Agent" if brand_name == "cyan" else "Hermes Agent")
         line1 = f"{agent_name} - AI Agent Framework"
         tiny_line = agent_name
 
@@ -11569,10 +11575,13 @@ class HermesCLI:
         try:
             from hermes_cli.skin_engine import get_active_skin
             _welcome_skin = get_active_skin()
-            _welcome_text = _welcome_skin.get_branding("welcome", "Welcome to Hermes Agent! Type your message or /help for commands.")
+            _brand_name = os.environ.get("HERMES_BRAND", "hermes")
+            _brand_label = "Cyan Agent" if _brand_name == "cyan" else "Hermes Agent"
+            _welcome_text = _welcome_skin.get_branding("welcome", f"Welcome to {_brand_label}! Type your message or /help for commands.")
             _welcome_color = _welcome_skin.get_color("banner_text", "#FFF8DC")
         except Exception:
-            _welcome_text = "Welcome to Hermes Agent! Type your message or /help for commands."
+            _brand_label = "Cyan Agent" if os.environ.get("HERMES_BRAND") == "cyan" else "Hermes Agent"
+            _welcome_text = f"Welcome to {_brand_label}! Type your message or /help for commands."
             _welcome_color = "#FFF8DC"
         self._console_print(f"[{_welcome_color}]{_welcome_text}[/]")
 
@@ -12398,7 +12407,7 @@ class HermesCLI:
             import signal as _sig
             from prompt_toolkit.application import run_in_terminal
             from hermes_cli.skin_engine import get_active_skin
-            agent_name = get_active_skin().get_branding("agent_name", "Hermes Agent")
+            agent_name = get_active_skin().get_branding("agent_name", "Cyan Agent" if os.environ.get("HERMES_BRAND") == "cyan" else "Hermes Agent")
             msg = f"\n{agent_name} has been suspended. Run `fg` to bring {agent_name} back."
             def _suspend():
                 os.write(1, msg.encode())

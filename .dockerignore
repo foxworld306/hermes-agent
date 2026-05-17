@@ -3,11 +3,22 @@
 .gitignore
 .gitmodules
 
-# Dependencies
-node_modules
-**/node_modules
-.venv
+# Environment files
+.env
+
+# Virtual environments
+.venv/
 **/.venv
+
+# Python artifacts
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Dependencies
+node_modules/
+**/node_modules
 
 # Built artifacts that are regenerated inside the image.  Excluded so local
 # rebuilds on the developer's machine don't invalidate the npm-install layer
@@ -18,14 +29,20 @@ ui-tui/packages/hermes-ink/dist/
 # CI/CD
 .github
 
-# Environment files
-.env
-
+# Documentation
 *.md
 
 # Runtime data (bind-mounted at /opt/data; must not leak into build context)
 data/
-
-# Compose/profile runtime state (bind-mounted; avoid ownership/secret issues)
 hermes-config/
 runtime/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

@@ -204,6 +204,16 @@ def _apply_profile_override() -> None:
 
 _apply_profile_override()
 
+# ─── Brand detection — MUST happen before any hermes module import.
+# Detect whether we were invoked as `hermes` or `cyan` so that user-facing
+# strings can be branded accordingly.  Set HERMES_BRAND as an env var so
+# downstream modules (cli.py, skin_engine, etc.) can read it.
+_invoked_as = sys.argv[0].split("/")[-1].split("\\")[-1]
+if _invoked_as == "cyan":
+    os.environ["HERMES_BRAND"] = "cyan"
+else:
+    os.environ["HERMES_BRAND"] = "hermes"
+
 # Load .env from ~/.hermes/.env first, then project root as dev fallback.
 # User-managed env files should override stale shell exports on restart.
 from hermes_cli.config import get_hermes_home

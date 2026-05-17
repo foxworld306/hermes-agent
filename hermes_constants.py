@@ -10,11 +10,24 @@ from pathlib import Path
 
 _profile_fallback_warned: bool = False
 
+# ─── Brand-aware home directory ───────────────────────────────────────────────
+# Read CYAN_HOME first, fallback to HERMES_HOME.  This lets Cyan-branded
+# installs use ~/.cyan while keeping full backward compatibility for Hermes.
+_cyan_home = os.environ.get("CYAN_HOME", "").strip()
+_hermes_home = os.environ.get("HERMES_HOME", "").strip()
+if _cyan_home:
+    _env_home_override = _cyan_home
+elif _hermes_home:
+    _env_home_override = _hermes_home
+else:
+    _env_home_override = ""
+
 
 def get_hermes_home() -> Path:
     """Return the Hermes home directory (default: ~/.hermes).
 
-    Reads HERMES_HOME env var, falls back to ~/.hermes.
+    Reads CYAN_HOME env var first (for Cyan-branded installs), then
+    HERMES_HOME, falls back to ~/.hermes.
     This is the single source of truth — all other copies should import this.
 
     When ``HERMES_HOME`` is unset but an ``active_profile`` file indicates
@@ -27,7 +40,7 @@ def get_hermes_home() -> Path:
     template in ``hermes_cli/gateway.py`` and the kanban dispatcher in
     ``hermes_cli/kanban_db.py``).  See https://github.com/NousResearch/hermes-agent/issues/18594.
     """
-    val = os.environ.get("HERMES_HOME", "").strip()
+    val = _env_home_override or os.environ.get("HERMES_HOME", "").strip()
     if val:
         return Path(val)
 
@@ -151,15 +164,37 @@ def display_hermes_home() -> str:
         profile:  ``~/.hermes/profiles/coder``
         custom:   ``/opt/hermes-custom``
 
+    When invoked as ``cyan`` (CYAN_HOME set), displays paths with ``.cyan``
+    instead of ``.hermes`` for the user-facing brand.
+
     Use this in **user-facing** print/log messages instead of hardcoding
     ``~/.hermes``.  For code that needs a real ``Path``, use
     :func:`get_hermes_home` instead.
     """
     home = get_hermes_home()
     try:
-        return "~/" + str(home.relative_to(Path.home()))
+        display_path = "~/" + str(home.relative_to(Path.home()))
     except ValueError:
-        return str(home)
+        display_path = str(home)
+
+    # Cyan branding: replace .hermes with .cyan in display only
+    if _cyan_home and ".hermes" in display_path:
+        display_path = display_path.replace(".hermes", ".cyan")
+    return display_path
+
+
+def display_cyan_home() -> str:
+    """Alias for display_hermes_home() — Cyan-branded path display."""
+    return display_hermes_home()
+
+
+def get_brand() -> str:
+    """Return the current brand name based on how the process was invoked.
+
+    Returns 'cyan' when invoked as ``cyan`` (HERMES_BRAND='cyan' set by
+    hermes_cli/main.py), otherwise returns 'hermes'.
+    """
+    return os.environ.get("HERMES_BRAND", "hermes")
 
 
 def get_subprocess_home() -> str | None:

@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Header
+from pathlib import Path
 from typing import Optional
+
+from fastapi import APIRouter, Header, Request
+from fastapi.templating import Jinja2Templates
 
 from openwebui_gateway.session_manager import SessionManager
 from openwebui_gateway.profile_service import ProfileService
@@ -10,6 +13,8 @@ router = APIRouter(prefix="/api/admin")
 session_manager = SessionManager()
 profile_service = ProfileService()
 tool_service = ToolService()
+
+templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 
 
 @router.get("/users")
@@ -101,3 +106,9 @@ async def system_stats():
             [t for t in tool_service.get_tool_status() if t["enabled"]]
         ),
     }
+
+
+@router.get("/dashboard")
+async def admin_dashboard(request: Request):
+    """Admin dashboard HTML page."""
+    return templates.TemplateResponse("admin_dashboard.html", {"request": request})
