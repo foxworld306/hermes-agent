@@ -1575,20 +1575,75 @@ Tests: pytest tests/openwebui_gateway/ -v"
 
 ## Success Criteria
 
-- [ ] `POST /v1/chat/completions` returns valid OpenAI API format
-- [ ] `GET /v1/models` returns model list
-- [ ] `GET /v1/health` returns healthy status
-- [ ] Admin API: GET /api/admin/users lists profiles
-- [ ] Admin API: POST /api/admin/tools/{name}/disable disables tool globally
-- [ ] Admin API: POST /api/admin/agents/stop terminates agent (with path param)
-- [ ] Profile auto-creates on first request
-- [ ] Agent instances are reused across requests (same user)
-- [ ] `cyan` command works; user sees "Cyan Agent" branding
-- [ ] Docker build succeeds and gateway runs in container
-- [ ] All unit tests pass (pytest)
+- [x] `POST /v1/chat/completions` returns valid OpenAI API format
+- [x] `GET /v1/models` returns model list
+- [x] `GET /v1/health` returns healthy status
+- [x] Admin API: GET /api/admin/users lists profiles
+- [x] Admin API: POST /api/admin/tools/{name}/disable disables tool globally
+- [x] Admin API: POST /api/admin/agents/stop terminates agent (with path param)
+- [x] Profile auto-creates on first request
+- [x] Agent instances are reused across requests (same user)
+- [x] `cyan` command works; user sees "Cyan Agent" branding
+- [x] Docker build succeeds and gateway runs in container
+- [x] All unit tests pass (pytest)
 
 ---
 
-**Plan Version**: 1.1 (Clean version)
-**Date**: 2026-05-16
-**Next Phase**: Phase 2 (Skill approval system + optional code trimming)
+## Phase 2 计划（Next Phase）
+
+**目标**：在 Phase 1 基础上增强，添加技能审批系统、代码精简、以及文件下载功能。
+
+### Phase 2.1：文件下载功能（File Delivery System）
+
+**背景**：当前 Agent 生成文件后，文件保存在服务器本地 `~/.hermes/profiles/<user_id>/` 目录下。Open-WebUI 前端无法直接下载这些文件，用户只能通过 SSH 到服务器获取或让 Agent 把内容贴到聊天中。
+
+**需求**：
+- [ ] 新增 `/files/{user_id}/{filename}` 下载路由
+- [ ] Agent 生成文件后在 chat 回复中附带 Markdown 下载链接
+- [ ] 支持文件列表查看（用户自己生成了哪些文件）
+- [ ] 权限控制：用户只能下载自己的文件
+- [ ] 大文件支持：支持 ZIP 打包下载多个文件
+- [ ] 管理员后台集成：查看所有用户的文件生成记录
+
+**技术方案**：
+1. 新增 `openwebui_gateway/routes/files.py` - FastAPI FileResponse
+2. 新增 `openwebui_gateway/file_service.py` - 文件管理逻辑
+3. Agent 输出格式增加 `[下载报告](http://gateway/files/user@company.com/report.xlsx)`
+4. 前端 Open-WebUI 需支持 Markdown 链接渲染（已支持）
+
+**测试**：
+- [ ] 单元测试：文件下载权限控制
+- [ ] 单元测试：文件列表 API
+- [ ] 集成测试：Agent 生成文件 → 返回下载链接 → 实际下载验证
+
+---
+
+### Phase 2.2：技能审批系统（Skill Approval System）
+
+**目标**：用户自建的 skill 需要管理员审批后才能使用。
+
+**需求**：
+- [ ] 用户创建 skill → 状态为 "pending_approval"
+- [ ] 管理员在 dashboard 查看待审批 skill 列表
+- [ ] 管理员 approve/reject skill
+- [ ] 只有 approved 的 skill 才会加载到 Agent 工具集中
+- [ ] 通知机制：用户收到审批结果通知
+
+---
+
+### Phase 2.3：代码精简（Code Trimming）
+
+**目标**：减少 Gateway 的依赖体积，优化启动速度。
+
+**需求**：
+- [ ] 延迟导入（lazy import）Jinja2Templates 等可选依赖
+- [ ] 精简 Docker 镜像（多阶段构建）
+- [ ] 移除未使用的依赖项
+- [ ] 性能基准测试
+
+---
+
+**Plan Version**: 1.2 (Phase 1 complete + Phase 2 roadmap)
+**Date**: 2026-05-17
+**Phase 1 Status**: ✅ All tasks complete (61/61 tests pass)
+**Next Milestone**: Phase 2.1 - File Delivery System
