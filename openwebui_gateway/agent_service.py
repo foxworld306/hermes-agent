@@ -1,3 +1,4 @@
+import os
 import uuid
 from typing import AsyncGenerator, List, Optional
 
@@ -8,7 +9,17 @@ class AgentService:
     """Wrap AIAgent chat calls, providing OpenAI API compatible interface"""
 
     def __init__(self, profile_base_dir: str = "~/.hermes/profiles"):
-        self.session_manager = SessionManager(profile_base_dir)
+        # Read LLM endpoint configuration from environment
+        base_url = os.environ.get("CYAN_BASE_URL") or os.environ.get("OPENAI_API_BASE")
+        api_key = os.environ.get("CYAN_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        provider = os.environ.get("CYAN_PROVIDER", "openai")
+        
+        self.session_manager = SessionManager(
+            profile_base_dir=profile_base_dir,
+            base_url=base_url,
+            api_key=api_key,
+            provider=provider,
+        )
 
     def chat(
         self,

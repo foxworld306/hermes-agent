@@ -14,6 +14,9 @@ class SessionManager:
         self,
         profile_base_dir: str = "~/.hermes/profiles",
         tool_config_path: Optional[str] = None,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        provider: Optional[str] = None,
     ):
         self.profile_service = ProfileService(profile_base_dir)
         self.tool_service = (
@@ -21,6 +24,11 @@ class SessionManager:
             if tool_config_path
             else ToolService()
         )
+        
+        # LLM endpoint configuration
+        self.base_url = base_url
+        self.api_key = api_key
+        self.provider = provider
 
         self._active_agents: Dict[str, any] = {}
         self._locks: Dict[str, asyncio.Lock] = {}
@@ -59,12 +67,21 @@ class SessionManager:
         config = self.profile_service.get_profile_config(user_id) or {}
 
         try:
-            agent = AIAgent(
-                model=config.get("model", "gpt-4"),
-                max_iterations=90,
-                save_trajectories=True,
-                session_id=user_id,
-            )
+            agent_kwargs = {
+                "model": config.get("model", "gpt-4"),
+                "max_iterations": 90,
+                "save_trajectories": True,
+                "session_id": user_id,
+            }
+            # Add LLM endpoint configuration if provided
+            if self.base_url:
+                agent_kwargs["base_url"] = self.base_url
+            if self.api_key:
+                agent_kwargs["api_key"] = self.api_key
+            if self.provider:
+                agent_kwargs["provider"] = self.provider
+            
+            agent = AIAgent(**agent_kwargs)
         except Exception:
             # If AIAgent init fails (missing API keys, etc.), fall back to stub
             agent = _create_stub_agent()(
